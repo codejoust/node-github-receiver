@@ -8,7 +8,6 @@ function run_local_hook(hook_name, params){
     var gh_data = null,
         args = [];
     if ('payload' in params){
-      //console.log(params);
       try {
        var gh_data = JSON.parse(params['payload']);
       } catch (e){
@@ -24,14 +23,12 @@ function run_local_hook(hook_name, params){
     }
     console.log('Running ' + hook_name + ' @ ' + (new Date()));
     var hook_script = spawn(hook_path, args);
+    hook_script.stdout.pipe(process.stdout);
+    hook_script.stderr.pipe(process.stderr);
+    hook_script.on('close', function(){ console.log("\n"); });
     if ('payload' in params){
       hook_script.stdin.write(params['payload']);
     }
-    hook_script.stdout.on('data', function(data){ console.log(data.toString('ascii')); });
-    hook_script.stderr.on('data', function(data){ console.error(data.toString('ascii')); });
-    hook_script.on('close', function(){
-      console.log("\n");
-    });
   } else {
     console.error('Cannot open hook for ' + hook_name);
   }
@@ -51,13 +48,11 @@ function parse_params(raw_data){
 
 function handle_request(req, res, data){
   if (req.method == 'POST' && req.url.length > 1){
-    
       run_local_hook(req.url.substr(1), parse_params(data.toString()));
-    
       res.writeHead(200, {'Content-Type': 'text/plain'});
       res.end('ok\n');
   } else {
-    res.writeHead(200, {'Content-Type': 'text/plain'});
+    res.writeHead(500, {'Content-Type': 'text/plain'});
     res.end('An error occured processing the hook.');
   }
 }
