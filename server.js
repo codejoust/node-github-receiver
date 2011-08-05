@@ -22,7 +22,7 @@ function run_local_hook(hook_name, params){
         console.error('Bad commit data provided!')
       }
     }
-    var logfile_stream = fs.createWriteStream('logs/' + hook_name + '.log', {flags: 'a+'}),
+    var logfile_stream = fs.createWriteStream(__dirname + '/logs/' + hook_name + '.log', {flags: 'a+'}),
         info_text = 'Running ' + hook_name + ' @ ' + (new Date()) + "\n",
         start_time = (new Date).getTime();
     logfile_stream.write(info_text); process.stdout.write(info_text);
@@ -31,7 +31,7 @@ function run_local_hook(hook_name, params){
     hook_script.stderr.pipe(logfile_stream, {end: false});
     hook_script.on('exit', function(){
       var endtime = (new Date).getTime() - start_time,
-          msg = '---- (took '+ Math.floor(endtime / 1000) +'s) ----\n';
+          msg = '---- (took '+ Math.floor(endtime / 10) / 100 +'s) ----\n';
       logfile_stream.write(msg); process.stdout.write(msg);
       logfile_stream.destroy();
     });
