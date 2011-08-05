@@ -3,13 +3,31 @@ var http  = require('http')
   , path  = require('path');
 
 function run_local_hook(hook_name, data){
+  console.log(data);
   hook_path = __dirname + '/hooks/' + hook_name;
   if (path.existsSync(hook_path)) {
+    var gh_data = null,
+        args = [];
+    if (data.length > 0){
+      console.log(data);
+      try {
+       var gh_data = JSON.parse(data.toString());
+      } catch (e){
+        console.error('Bad JSON input');
+      }
+    }
+    if (gh_data){
+      try {
+        args = ['--branch', gh_data.ref.replace('refs/heads/', ''), '--repo', gh_data.repository['name']];
+      } catch (e) {
+        console.error('Bad commit data provided!')
+      }
+    }
     console.log('Running ' + hook_name + ' @ ' + (new Date()));
-    var hook_script = spawn(hook_path);
+    var hook_script = spawn(hook_path, args);
     hook_script.stdin.write(data);
-    hook_script.stdout.on('data', function(data){ console.log(data); });
-    hook_script.stderr.on('data', function(data){ console.error(data); });
+    hook_script.stdout.on('data', function(data){ console.log(data.toString('ascii')); });
+    hook_script.stderr.on('data', function(data){ console.error(data.toString('ascii')); });
     hook_script.on('close', function(){
       console.log("\n");
     });
@@ -19,7 +37,7 @@ function run_local_hook(hook_name, data){
 }
 
 function handle_request(req, res, data){
-  if (req.method == 'POST' && data.length > 0 && req.url.length > 1){
+  if (req.method == 'POST' && req.url.length > 1){
     
       run_local_hook(req.url.substr(1), data);
     
