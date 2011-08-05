@@ -2,16 +2,15 @@ var http  = require('http')
   , spawn = require('child_process').spawn
   , path  = require('path');
 
-function run_local_hook(hook_name, data){
-  console.log(data);
+function run_local_hook(hook_name, params){
   hook_path = __dirname + '/hooks/' + hook_name;
   if (path.existsSync(hook_path)) {
     var gh_data = null,
         args = [];
-    if (data.length > 0){
-      console.log(data);
+    if ('payload' in params){
+      //console.log(params);
       try {
-       var gh_data = JSON.parse(data.toString());
+       var gh_data = JSON.parse(params['payload']);
       } catch (e){
         console.error('Bad JSON input');
       }
@@ -25,7 +24,9 @@ function run_local_hook(hook_name, data){
     }
     console.log('Running ' + hook_name + ' @ ' + (new Date()));
     var hook_script = spawn(hook_path, args);
-    hook_script.stdin.write(data);
+    if ('payload' in params){
+      hook_script.stdin.write(params['payload']);
+    }
     hook_script.stdout.on('data', function(data){ console.log(data.toString('ascii')); });
     hook_script.stderr.on('data', function(data){ console.error(data.toString('ascii')); });
     hook_script.on('close', function(){
@@ -36,10 +37,22 @@ function run_local_hook(hook_name, data){
   }
 }
 
+function parse_params(raw_data){
+  var parts = raw_data.split('&'),
+      params = {};
+  parts.forEach(function(part){
+    part = part.split('=');
+    if (part.length == 2){
+      params[part[0]] = decodeURIComponent(part[1]);
+    }
+  });
+  return params;
+}
+
 function handle_request(req, res, data){
   if (req.method == 'POST' && req.url.length > 1){
     
-      run_local_hook(req.url.substr(1), data);
+      run_local_hook(req.url.substr(1), parse_params(data.toString()));
     
       res.writeHead(200, {'Content-Type': 'text/plain'});
       res.end('ok\n');
